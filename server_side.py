@@ -175,128 +175,125 @@ def do_fuzzer_runs():
 
             # DEFAULT MODE
             else:
-                if (verbosity > 1)
+                if (verbosity > 1):
                     print("Handling request in DEFAULT MODE.")
 
                 # read the size of the input file (integer)
-                int
-                filesize = is.read() | is.read() << 8 | is.read() << 16 | is.read() << 24
-                if (verbosity > 2)
+                #filesize = is.read() | is.read() << 8 | is.read() << 16 | is.read() << 24
+                filesize = int.from_bytes(int, request.conn.read(4), "LITTLE")
+                if (verbosity > 2):
                     print("File size = " + filesize)
 
-                if (filesize < 0) {
-                if (verbosity > 1)
-                System.err.println("Failed to read file size")
-                result = STATUS_COMM_ERROR
-                } else {
+                if (filesize < 0):
+                  if (verbosity > 1):
+                    print("Failed to read file size")  
+                  result = STATUS_COMM_ERROR
+                else:
 
-                // read the input file
-                byte input[] = new byte[filesize]
-                int read = 0
-                while (read < filesize) {
-                if ( is.available() > 0) {
-                input[read++] = (byte) is.read()
-                } else {
-                if (verbosity > 1) {
-                System.err.println("No input available from stream, strangely")
-                System.err.println("Appending a 0")
-                }
-                input[read++] = 0
-                }
-                }
+                  # read the input file
+                  input = bytestream(filesize)
+                  read = 0
+                  while read < filesize:
+                    if request.conn.available() > 0:
+                      input[read] = request.conn.read(1)
+                      read = read + 1
+                    else:
+                      if (verbosity > 1):
+                        print("No input available from stream, strangely")
+                        print("Appending a 0")
+                      
+                      input[read] = 0
+                      read = read + 1
+                  
+                  appCall = ApplicationCall(input)
+            
+            
 
-                appCall = new
-                ApplicationCall(input)
-            }
-            }
+            if (result != STATUS_COMM_ERROR && appCall != None):
+              # run app with input
+              ExecutorService executor = Executors.newSingleThreadExecutor()
+              Future < Long > future = executor.submit(appCall)
 
-            if (result != STATUS_COMM_ERROR & & appCall != null) {
-            // run app with input
-            ExecutorService executor = Executors.newSingleThreadExecutor()
-            Future < Long > future = executor.submit(appCall)
+              try:
+                if (verbosity > 1):
+                  print("Started...")
+                future.get(timeout, TimeUnit.MILLISECONDS)
+                result = STATUS_SUCCESS
+                if (verbosity > 1):
+                  print("Finished!")
+              catch (TimeoutException te):
+                future.cancel(true)
+                if (verbosity > 1):
+                  print("Time-out!")
+                  result = STATUS_TIMEOUT
+              catch (Throwable e):
+                future.cancel(true)
+                if (e.getCause() instanceof RuntimeException):
+                  if (verbosity > 1):
+                    print("RuntimeException thrown!")
+                else:
+                  if (e.getCause() instanceof Error):
+                    if (verbosity > 1):
+                      print("Error thrown!")
+                  else:
+                    if (verbosity > 1):
+                      print("Uncaught throwable!")
+                  
+                e.printStackTrace()
+              }
+              executor.shutdownNow()
+          
 
-            try {
-            if (verbosity > 1)
-            print("Started...")
-            future.get(timeout, TimeUnit.MILLISECONDS)
-            result = STATUS_SUCCESS
-            if (verbosity > 1)
-            print("Finished!")
-            } catch (TimeoutException te) {
-            future.cancel(true)
-            if (verbosity > 1)
-            print("Time-out!")
-            result = STATUS_TIMEOUT
-            } catch (Throwable e) {
-            future.cancel(true)
-            if (e.getCause() instanceof RuntimeException) {
-            if (verbosity > 1)
-            print("RuntimeException thrown!")
-            } else if (e.getCause() instanceof Error) {
-            if (verbosity > 1)
-            print("Error thrown!")
-            } else {
-            if (verbosity > 1)
-            print("Uncaught throwable!")
-            }
-            e.printStackTrace()
-            }
-            executor.shutdownNow()
-        }
+        if (verbosity > 1):
+          print("Result: " + result)
 
-        if (verbosity > 1)
-        print("Result: " + result)
-
-        if (verbosity > 2)
-        Mem.print()
-        // send back status
+        if (verbosity > 2):
+          Mem.print()
+        # send back status
         os.write(result)
-        // send back "shared memory" over TCP
+        # send back "shared memory" over TCP
         os.write(Mem.mem, 0, Mem.mem.length)
-        // close connection
+        # close connection
         os.flush()
         request.clientSocket.shutdownOutput()
         request.clientSocket.shutdownInput()
         request.clientSocket.setSoLinger(true, 100000)
         request.clientSocket.close()
-        if (verbosity > 1)
-        print("Connection closed.")
-        } else {
-        // if no request, close your eyes for a bit
-        Thread.sleep(100)
-        }
+        if (verbosity > 1):
+          print("Connection closed.")
+        else:
+          # if no request, close your eyes for a bit
+          Thread.sleep(100)
+        
+   if __name__ == "__main__":
 
-        if __name__ == "__main__":
-
-            if
-        len(sys.argv) < 1:
-        print("Invalid usage. Expected [-v N] [-p N] [-t N] python_script <args>")
-        sys.exit(1)
+        if len(sys.argv) < 1:
+          print("Invalid usage. Expected [-v N] [-p N] [-t N] python_script <args>")
+          sys.exit(1)
 
         port = DEFAULT_PORT
         timeout = DEFAULT_TIMEOUT
         verbosity = DEFAULT_VERBOSITY
 
         curArg = 0
-    while len(sys.argv) > curArg):
-        if
-    (sys.argv[curArg] == "-p") | | (sys.argv[curArg] == "-port"):
-    port = int(sys.argv[curArg + 1])
-    curArg = curArg + 2
-    else:
-    if (sys.argv[curArg] == "-v") | | (sys.argv[curArg] == "-verbosity"):
-        verbosity = int(argv[curArg + 1])
-    curArg = curArg + 2
-    else:
-    if (sys.argv[curArg] == "-t") | | (sys.argv[curArg] == "-timeout"):
-        timeout = Long.parseLong(args[curArg + 1])
-    curArg += 2
-    else:
-    break
+        while len(sys.argv) > curArg):
+            if (sys.argv[curArg] == "-p") || (sys.argv[curArg] == "-port"):
+              port = int(sys.argv[curArg + 1])
+              curArg = curArg + 2
+            else:
+              if (sys.argv[curArg] == "-v") | | (sys.argv[curArg] == "-verbosity"):
+                  verbosity = int(argv[curArg + 1])
+              curArg = curArg + 2
+              else:
+                if (sys.argv[curArg] == "-t") | | (sys.argv[curArg] == "-timeout"):
+                    timeout = Long.parseLong(args[curArg + 1])
+                curArg += 2
+                else:
+                break
 
-    target = argv[curArg]
-    # provide the target with only the command line arguments that are meant for it
-    targetArgs = argv[curArgv + 1:]
+        target = argv[curArg]
+        # provide the target with only the command line arguments that are meant for it
+        targetArgs = argv[curArgv + 1:]
 
 # @todo: maybe search for @@
 # @todo: maybe redirect outout do /dev/null in case verbosity <= 0
