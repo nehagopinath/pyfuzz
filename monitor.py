@@ -8,7 +8,8 @@ from mem import Mem
 
 
 class Monitor:
-  def run(self, target: str, args)
+  @staticmethod
+  def run(target: str, filename: str, args):
       # data_file=None, data_suffix=None, cover_pylib=None, auto_data=False, timid=None, branch=None, config_file=True, source=None, omit=None, include=None, debug=None, concurrency=None
       data_file = ".coverage"
       data_suffix = None
@@ -22,8 +23,12 @@ class Monitor:
       
       #target = sys.argv[1]
       # provide the target with only the command line arguments that are meant for it 
-      sys.argv[1:] = args
+      sys.argv[1] = filename
+      sys.argv[2:] = args
         
+      print("target: " + target)
+      print("old args: " + str(args))
+      print("new args: " + str(sys.argv))
       
       for i in range(0, 1): # @todo: maybe optimize here
         print ("Executing " + target)
@@ -42,7 +47,7 @@ class Monitor:
         except:
           cov.stop()
           print ("Caught one!")
-          traceback.print_exc()
+          #traceback.print_exc()
           crashed = True
           
         covData = cov.get_data()
@@ -65,7 +70,6 @@ class Monitor:
         translator.onExecutedPath(target, arcs)
         
         #cov.html_report()
-        mem = Mem()
-        mem.print()
+        #Mem.print()
         
         return not crashed

@@ -17,12 +17,14 @@ class Mem:
 	#  self.clear()
 	
 	# Clears the current measurements.
-  def clear(self):
-    for i in range(0, self.SIZE):
-      self.mem[i] = 0
+  @staticmethod
+  def clear():
+    for i in range(0, Mem.SIZE):
+      Mem.mem[i] = 0
 	
   # Prints to stdout any cell that contains a non-zero value.
-  def print(self):
-    for i in range(0, self.SIZE):
-      if self.mem[i] != 0:
-        print (str(i) + ": " + str(self.mem[i]))
+  @staticmethod
+  def print():
+    for i in range(0, Mem.SIZE):
+      if Mem.mem[i] != 0:
+        print (str(i) + ": " + str(Mem.mem[i]))

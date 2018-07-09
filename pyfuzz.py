@@ -1,7 +1,9 @@
 import time
 import socket
 import sys
+import traceback
 from threading import Thread
+
 from mem import Mem
 from monitor import Monitor
 
@@ -10,34 +12,36 @@ from monitor import Monitor
 #
 
 class ApplicationCall:
-  def __init__(self, path: str):
-    self.path = path
-
-  def __init__(self, bytes: bytearray):
-    self.bytes = bytes
+  def __init__(self, path, isPath):
+    if isPath is True:
+      self.path = path
+      self.bytes = bytearray()
+    else:
+      self.bytes = bytes
+      self.path = None
 
   def run(self):
-    if (path != None):
-      self.__run_application(self.path)
+    if (self.path != None):
+      self.__run_application_filename(self.path)
     else:
-      self.__run_application(self.bytes)
+      self.__run_application_bytes(self.bytes)
 
-  def __run_application(self, filename: str):
+  def __run_application_filename(self, filename: str):
     # @todo: handle @@
     start_time = int(round(time.time() * 1000))
     # call wrapper python script
-    crashed = not Monitor.run(filename, args)
+    self.crashed = not Monitor.run(target, filename, args)
     
     end_time = int(round(time.time() * 1000))
     self.exec_time = end_time - start_time
 
-  def __run_application(self, bytes: bytearray):
+  def __run_application_bytes(self, bytes: bytearray):
 	  # create tmp file
-	  self.tmpfile = open("pyfuzz_input", wb)
+	  self.tmpfile = open("pyfuzz_input", "wb")
 	  self.tmpfile.write(bytes)
 	  self.tmpfile.close()
 		
-	  self.__run_application("pyfuzz_input")
+	  self.__run_application_filename("pyfuzz_input")
 
 class FuzzRequest:
   def __init__(self, conn):
@@ -51,26 +55,32 @@ class RequestQueue:
 
   def offer(self, fuzz_request: FuzzRequest):
     if self.request_cnt < self.max_requests:
+      #print("Req queue: added")
       self.fuzz_requests.append(fuzz_request)
+      self.request_cnt = self.request_cnt + 1
       return True
     return False
         
   def poll(self):
     if self.request_cnt > 0:
+      #print("Req queue: polled")
       self.request_cnt = self.request_cnt - 1
-      return self.fuzz_requets.pop()
+      return self.fuzz_requests.pop()
     return None    
 
 class Executor:
   def __init__(self, appCall: ApplicationCall):
     self.appCall = appCall
     self.thread = Thread(target=appCall.run, args=())
+    self.crashed = False
     
   def start(self):
+    self.crashed = False
     self.thread.start()
     
   def join(self, ms: int):
     self.thread.join(ms / 1000.0)
+    self.crashed = self.appCall.crashed
     if (self.thread.is_alive()):
       return False
     return True
@@ -104,6 +114,7 @@ mode = DEFAULT_MODE
 requestQueue = RequestQueue()
 
 args = []
+target = ""
 
 class ServerThread(Thread):
   # accept TCP connections and put them in a queue
@@ -129,7 +140,7 @@ class ServerThread(Thread):
         if not status:
             if verbosity > 1:
                 print("Queue full.")
-            conn.send(STATUS_QUEUE_FULL)
+            conn.send(STATUS_QUEUE_FULL.to_bytes(1, "little"))
             conn.close()
             if verbosity > 1:
                 print("Connection closed.")
@@ -144,7 +155,7 @@ class FuzzerThread(Thread):
           request = requestQueue.poll()
           if request != None:
               if verbosity > 1:
-                  print("Handling request 1 of " + (requestQueue.size + 1))
+                  print("Handling request 1 of " + str(requestQueue.request_cnt + 1))
 
               #InputStream is = request.clientSocket.getInputStream()
               #OutputStream os = request.clientSocket.getOutputStream()
@@ -156,16 +167,16 @@ class FuzzerThread(Thread):
               appCall = None
 
               # read the mode (local or default)
-              mode = request.conn.read(1)
-
+              mode = int.from_bytes(request.conn.recv(1), "little")
+              print("mode: " + str(mode))
               # LOCAL MODE
               if mode == LOCAL_MODE:
                   if verbosity > 1:
                       print("Handling request in LOCAL MODE.")
 
                   # read the length of the path (integer)
-                  #pathlen = is.read() | is.read() << 8 | is.read() << 16 | is.read() << 24
-                  pathlen = int.from_bytes(int, request.conn.read(4), "LITTLE")
+                  #pathlen = is.recv() | is.recv() << 8 | is.recv() << 16 | is.recv() << 24
+                  pathlen = int.from_bytes(request.conn.recv(4), "little")
                   if verbosity > 2:
                       print("Path len = " + pathlen)
 
@@ -175,11 +186,12 @@ class FuzzerThread(Thread):
                       result = STATUS_COMM_ERROR
                   else:
                       # read the path
-                      input = []
+                      input = bytearray(pathlen)
                       read = 0
                       while read < pathlen:
-                          if request.conn.available() > 0:
-                              input[read] = request.conn.read(1)
+                          byte = request.conn.recv(1)
+                          if byte != "":
+                              input[read] = int.from_bytes(byte, "little")
                               read = read + 1
                           else:
                               if verbosity > 1:
@@ -187,11 +199,11 @@ class FuzzerThread(Thread):
                                   result = STATUS_COMM_ERROR
                                   break
 
-                      path = string(input)
+                      path = input.decode()
                       if verbosity > 1:
                           print("Received path: " + path)
 
-                      appCall = ApplicationCall(path)
+                      appCall = ApplicationCall(path, True)
 
 
               # DEFAULT MODE
@@ -200,8 +212,8 @@ class FuzzerThread(Thread):
                       print("Handling request in DEFAULT MODE.")
 
                   # read the size of the input file (integer)
-                  #filesize = is.read() | is.read() << 8 | is.read() << 16 | is.read() << 24
-                  filesize = int.from_bytes(int, request.conn.read(4), "LITTLE")
+                  #filesize = is.recv() | is.recv() << 8 | is.recv() << 16 | is.recv() << 24
+                  filesize = int.from_bytes(request.conn.recv(4), "little")
                   if (verbosity > 2):
                       print("File size = " + filesize)
 
@@ -212,11 +224,13 @@ class FuzzerThread(Thread):
                   else:
 
                     # read the input file
-                    input = bytestream(filesize)
+                    input = bytearray(filesize)
                     read = 0
                     while read < filesize:
-                      if request.conn.available() > 0:
-                        input[read] = request.conn.read(1)
+                      byte = request.conn.recv(1)
+                      if byte != "":
+                        input[read] = int.from_bytes(byte, "little") 
+                        #print(str(input[read]))
                         read = read + 1
                       else:
                         if (verbosity > 1):
@@ -225,8 +239,8 @@ class FuzzerThread(Thread):
                         
                         input[read] = 0
                         read = read + 1
-                    
-                    appCall = ApplicationCall(input)
+                        
+                    appCall = ApplicationCall(input, False)
               
               
 
@@ -242,8 +256,8 @@ class FuzzerThread(Thread):
                   if (executor.join(timeout)): 
                     if (verbosity > 1):
                       print("Finished!")
-                    if executor.crashed():
-                      result = STATUS_CRASHED
+                    if executor.crashed:
+                      result = STATUS_CRASH
                     else:
                       result = STATUS_SUCCESS
                   else:
@@ -253,26 +267,28 @@ class FuzzerThread(Thread):
                 except:
                   if (verbosity > 1):
                     print("Something didn't work!")
-                  result = STATUS_CRASHED
+                    traceback.print_exc()
+                  result = STATUS_CRASH
                 
                 executor.shutdown()
             
 
               if (verbosity > 1):
-                print("Result: " + result)
+                print("Result: " + str(result))
 
               if (verbosity > 2):
                 Mem.print()
               # send back status
-              os.write(result)
+              request.conn.send(result.to_bytes(1, "little"))
               # send back "shared memory" over TCP
-              os.write(Mem.mem, 0, Mem.mem.length)
+              request.conn.send(Mem.mem)
               # close connection
-              os.flush()
-              request.clientSocket.shutdownOutput()
-              request.clientSocket.shutdownInput()
-              request.clientSocket.setSoLinger(true, 100000)
-              request.clientSocket.close()
+              request.conn.close()
+              
+              #request.clientSocket.shutdownOutput()
+              #request.clientSocket.shutdownInput()
+              #request.clientSocket.setSoLinger(true, 100000)
+              #request.clientSocket.close()
               if (verbosity > 1):
                 print("Connection closed.")
           else:
@@ -281,7 +297,7 @@ class FuzzerThread(Thread):
         
 if __name__ == "__main__":
 
-  if len(sys.argv) < 1:
+  if len(sys.argv) < 2:
     print("Invalid usage. Expected [-v N] [-p N] [-t N] python_script <args>")
     sys.exit(1)
 
@@ -289,7 +305,7 @@ if __name__ == "__main__":
   timeout = DEFAULT_TIMEOUT
   verbosity = DEFAULT_VERBOSITY
 
-  curArg = 0
+  curArg = 1
   while len(sys.argv) > curArg:
     if (sys.argv[curArg] == "-p") or (sys.argv[curArg] == "-port"):
       port = int(sys.argv[curArg + 1])
@@ -308,6 +324,10 @@ if __name__ == "__main__":
   target = sys.argv[curArg]
   # provide the target with only the command line arguments that are meant for it
   args = sys.argv[curArg + 1:]
+
+  if (verbosity > 1):
+    print("Target: " + target)
+    print("Args: " + str(args))
 
   # @todo: maybe search for @@
   # @todo: maybe redirect outout do /dev/null in case verbosity <= 0

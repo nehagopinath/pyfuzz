@@ -5,6 +5,7 @@ import sys
 def f(x):
   if x == 3:
     print ("==3")
+    print ("bla")
   else:
     if x > 12:
       print (">12")
@@ -12,5 +13,10 @@ def f(x):
       raise ValueError(">3 && <= 12")
 
 if __name__ == "__main__":
-  f(int(sys.argv[1]))
+  if len(sys.argv) < 2:
+    print("invalid nr or arguments")
+    sys.exit(0)
+  file = open(sys.argv[1], "r")
+  x = int(file.read())
+  f(x)
 
