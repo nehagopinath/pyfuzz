@@ -19,6 +19,7 @@ class ApplicationCall:
     else:
       self.bytes = bytes
       self.path = None
+    self.crashed = False
 
   def run(self):
     if (self.path != None):
@@ -241,7 +242,7 @@ class FuzzerThread(Thread):
                         read = read + 1
                         
                     appCall = ApplicationCall(input, False)
-              
+                    # @todo: protect shared thread data
               
 
               if (result != STATUS_COMM_ERROR and appCall != None):
