@@ -21,7 +21,7 @@ class Monitor:
       timid = False
       branch = True
       config_file = False
-      source = None#["sys", "os", "pdfrw", os.path.dirname(target)]
+      source = None #["pdfrw", os.path.dirname(target)]
       omit = None
       include = "*"
       debug = None
@@ -62,6 +62,7 @@ class Monitor:
           
         covData = cov.get_data()
         translator = Translator()
+        total_arcs = []
         for filename in covData.measured_files():
           print (filename)
           arcs = covData.arcs(os.path.abspath(filename)) # @todo
@@ -71,10 +72,12 @@ class Monitor:
             print ("arcs of " + filename + " missing!")
             return True
           else:
+            total_arcs.append((filename, arcs))
             print ("arcs: " + str(arcs))
-              
-          translator.onExecutedPath(filename, arcs)
-        #cov.save()
+        
+        print ("total arcs: " + str(total_arcs))      
+        translator.onExecution(total_arcs)
+        cov.save()
         
         #_, executable_statements, excluded_statements, not_run_statements, missing = #cov.analysis2('/home/manu/TUM/sem2/graybox_fuzzing/pyfuzz/sandbox/test_code.py')
 
@@ -89,6 +92,6 @@ class Monitor:
         
         
         #cov.html_report()
-        Mem.print()
+        #Mem.print()
         
         return not crashed

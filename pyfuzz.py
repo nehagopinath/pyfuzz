@@ -2,7 +2,7 @@ import time
 import socket
 import sys
 import traceback
-from threading import Thread
+from threading import Thread, Lock
 
 from mem import Mem
 from monitor import Monitor
@@ -50,23 +50,30 @@ class FuzzRequest:
 
 class RequestQueue:
   def __init__(self):
+    self.mutex = Lock()
     self.max_requests = 10
     self.fuzz_requests = []
     self.request_cnt = 0
 
   def offer(self, fuzz_request: FuzzRequest):
+    self.mutex.acquire()
     if self.request_cnt < self.max_requests:
       #print("Req queue: added")
       self.fuzz_requests.append(fuzz_request)
       self.request_cnt = self.request_cnt + 1
+      self.mutex.release()
       return True
+    self.mutex.release()  
     return False
         
   def poll(self):
+    self.mutex.acquire()
     if self.request_cnt > 0:
       #print("Req queue: polled")
       self.request_cnt = self.request_cnt - 1
+      self.mutex.release()
       return self.fuzz_requests.pop()
+    self.mutex.release()
     return None    
 
 class Executor:
@@ -101,7 +108,7 @@ DEFAULT_TIMEOUT = 300000 # in milliseconds
 timeout = DEFAULT_TIMEOUT
 
 DEFAULT_VERBOSITY = 2
-verbosity = DEFAULT_VERBOSITY
+verbosity = 0
 
 DEFAULT_PORT = 7007
 port = DEFAULT_PORT
@@ -282,7 +289,11 @@ class FuzzerThread(Thread):
               # send back status
               request.conn.send(result.to_bytes(1, "little"))
               # send back "shared memory" over TCP
-              request.conn.send(Mem.mem)
+              try:
+                request.conn.send(Mem.mem)
+              except:
+                pass
+              #Mem.print()
               # close connection
               request.conn.close()
               

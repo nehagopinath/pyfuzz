@@ -3,20 +3,21 @@
 import sys
 
 def f(x):
-  if x == 3:
-    print ("==3")
-    print ("bla")
+  if len(x) == 10:
+    raise ValueError(">3 && <= 12")
   else:
-    if x > 12:
-      print (">12")
+    if len(x) < 8:
+      print("bla")
     else:
-      raise ValueError(">3 && <= 12")
-
+      raise ValueError("sdsad")
+      
 if __name__ == "__main__":
   if len(sys.argv) < 2:
     print("invalid nr or arguments")
     sys.exit(0)
   file = open(sys.argv[1], "r")
-  x = int(file.read())
+  
+  x = file.readline()
+  
   f(x)
 
