@@ -7,6 +7,31 @@ from threading import Thread, Lock
 from mem import Mem
 from monitor import Monitor
 
+
+STATUS_SUCCESS = 0
+STATUS_TIMEOUT = 1
+STATUS_CRASH = 2
+STATUS_QUEUE_FULL = 3
+STATUS_COMM_ERROR = 4
+STATUS_DONE = 5
+DEFAULT_TIMEOUT = 300000 # in milliseconds
+timeout = DEFAULT_TIMEOUT
+
+DEFAULT_VERBOSITY = 2
+verbosity = 0
+
+DEFAULT_PORT = 7007
+port = DEFAULT_PORT
+IP = '0.0.0.0'
+BUFFER_SIZE = 1024
+
+DEFAULT_MODE = 0
+LOCAL_MODE = 1
+mode = DEFAULT_MODE
+
+args = []
+target = ""
+
 #
 # BASED ON KELINCI
 #
@@ -98,31 +123,9 @@ class Executor:
     pass
     
 
-STATUS_SUCCESS = 0
-STATUS_TIMEOUT = 1
-STATUS_CRASH = 2
-STATUS_QUEUE_FULL = 3
-STATUS_COMM_ERROR = 4
-STATUS_DONE = 5
-DEFAULT_TIMEOUT = 300000 # in milliseconds
-timeout = DEFAULT_TIMEOUT
 
-DEFAULT_VERBOSITY = 2
-verbosity = 0
-
-DEFAULT_PORT = 7007
-port = DEFAULT_PORT
-IP = '0.0.0.0'
-BUFFER_SIZE = 1024
-
-DEFAULT_MODE = 0
-LOCAL_MODE = 1
-mode = DEFAULT_MODE
 
 requestQueue = RequestQueue()
-
-args = []
-target = ""
 
 class ServerThread(Thread):
   # accept TCP connections and put them in a queue

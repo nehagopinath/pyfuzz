@@ -16,7 +16,7 @@ class Monitor:
       # @todo: get source from params or cfg file
       data_file = ".coverage"
       data_suffix = None
-      cover_pylib = True # measure also Python code within the interpreter
+      cover_pylib = False # measure also Python code within the interpreter
       auto_data = False
       timid = False
       branch = True
@@ -64,7 +64,7 @@ class Monitor:
         translator = Translator()
         total_arcs = []
         for filename in covData.measured_files():
-          print (filename)
+          #print (filename)
           arcs = covData.arcs(os.path.abspath(filename)) # @todo
           if len(arcs) < 1:
             continue
@@ -73,9 +73,9 @@ class Monitor:
             return True
           else:
             total_arcs.append((filename, arcs))
-            print ("arcs: " + str(arcs))
+            #print ("arcs: " + str(arcs))
         
-        print ("total arcs: " + str(total_arcs))      
+        #print ("total arcs: " + str(total_arcs))      
         translator.onExecution(total_arcs)
         cov.save()
         
