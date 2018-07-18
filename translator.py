@@ -137,7 +137,7 @@ class Translator:
       for (filename, line_nr) in path:
         self.__instrumentLocation(filename, line_nr)
     """
-    self.switching_file = open("/tmp/file_switching.log", "rb")
+    self.switching_file = open("/tmp/file_switching_" + str(os.getpid()) + ".log", "rb")
     
     while True:
       filename_bytes = self.switching_file.readline()
